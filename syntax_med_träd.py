@@ -1,14 +1,15 @@
 from LinkedQFile import LinkedQ
 from atomlist import atomer
 from molgrafik import *
+from atomweight_dict import atom_dict
 
 
 class Ruta:
-    def __init__(self, atom = "()", num = 1):
+    def __init__(self, atom="()", num=1):
         self.atom = atom
         self.num = num
-        self.next=None
-        self.down=None
+        self.next = None
+        self.down = None
 
 
 class Syntaxfel(Exception):
@@ -16,70 +17,71 @@ class Syntaxfel(Exception):
 
 
 def readFormel(q):
-    if q.peek().isalpha() or q.peek() == '(':
-        readMolekyl(q)
-        if q.peek() == None:
-            return
-    
+    mol = readMolekyl(q)
+    print(mol)
+    if not q.peek() or q.peek().isalpha() or q.peek() == '(':
+        return mol
+
     raise Syntaxfel(f"Felaktig gruppstart vid radslutet {printQueue(q)}")
 
 
 def readMolekyl(q):
-    readGroup(q)
-    mol = readGroup(q)
+    first_group = readGroup(q)
+    current_group = first_group
 
-    if q.peek() is None or q.peek() == ')' or q.peek().isnumeric():  # slut på inmatning eller just kommit tillbaka från ett parentesuttryck
-        return
-    
-    else:
-        mol.next = readMolekyl(q)
+    while q.peek() is not None:
+        if q.peek().isalpha():
+            next_group = readGroup(q)
+            current_group.next = next_group
+            current_group = next_group
+        elif q.peek() == '(':
+            # Parse the content inside the parentheses without dequeuing the opening (
+            q.dequeue()
+            inside_group = readMolekyl(q)
 
+            parenthesis_group = Ruta(atom="()")
+            parenthesis_group.down = inside_group
+            current_group.next = parenthesis_group
+            current_group = parenthesis_group
+
+            # Ensure the closing parenthesis is present and dequeue it
+            if q.peek() != ')':
+                raise Syntaxfel(f"Saknad högerparentes vid radslutet {printQueue(q)}")
+            q.dequeue()
+
+            if q.peek() and q.peek().isnumeric():
+                parenthesis_group.num = readNum(q)
+        else:
+            break
+
+    return first_group
 
 def readGroup(q):
     rutan = Ruta()
     rutan.atom = readAtom(q)
-
-    if q.peek() == None or q.peek().isalpha():
-        return
     
-    elif q.peek() == '(':
-        q.dequeue()
-        rutan.down = readMolekyl(q)
-        if q.peek() is None:
-            raise Syntaxfel(f"Saknad högerparentes vid radslutet {printQueue(q)}")
-        
-        if q.peek() == ')':
-            q.dequeue()
-            if q.peek() is not None and '0' <= q.peek() <= '9':
-                rutan.num = readNum(q)
-
-            else:
-                raise Syntaxfel(f"Saknad siffra vid radslutet {printQueue(q)}")
-
-    elif q.peek().isnumeric():
+    if q.peek() and q.peek().isnumeric():
         rutan.num = readNum(q)
+    return rutan
 
-    else:
-        return
 
 
 def readAtom(q):
     if q.peek() == '(':
         return
-    
+
     ATOM = readLETTER(q)
 
     if q.peek() is not None and 'a' <= q.peek() <= 'z':
         atom = readLetter(q)
         ATom = ATOM + atom
         if kollaAtom(ATom) is True:
-            return
+            return ATom
         else:
             raise Syntaxfel(f"Okänd atom vid radslutet {printQueue(q)}")
-        
-    else:
-        if kollaAtom(ATOM) is True:
-            return
+
+    elif kollaAtom(ATOM) is True:
+        return ATOM
 
     raise Syntaxfel(f"Okänd atom vid radslutet {printQueue(q)}")
 
@@ -96,8 +98,8 @@ def readLetter(q):
     if 'a' <= q.peek() <= 'z':
         letter = q.dequeue()
         return letter
-    
-    raise Syntaxfel(f"Saknad stor bokstav vid radslutet {printQueue(q)}")   
+
+    raise Syntaxfel(f"Saknad stor bokstav vid radslutet {printQueue(q)}")
 
 
 def readNum(q):
@@ -107,8 +109,8 @@ def readNum(q):
             q.dequeue()
             if q.peek == None:
                 break
-        return
-    
+        return int(num)
+
     elif num == '1':
         if q.peek() is not None and q.peek().isnumeric():
             while q.peek() is not None and q.peek().isnumeric():
@@ -117,7 +119,7 @@ def readNum(q):
                     break
             return
 
-    raise Syntaxfel(f"För litet tal vid radslutet {printQueue(q)}")  
+    raise Syntaxfel(f"För litet tal vid radslutet {printQueue(q)}")
 
 
 def printQueue(q):
@@ -142,6 +144,7 @@ def kollaFormelSyntax(formel):
         mol = readFormel(q)
         mg = Molgrafik()
         mg.show(mol)
+        return mol
     except Syntaxfel as fel:
         return str(fel)
 
@@ -153,17 +156,33 @@ def kollaAtom(atom):
         return False
 
 
-def main():
-    while True:
-        formel = input("Molekyl: ")
-        if formel == '#':
-            break
-        else:
-            resultat = kollaFormelSyntax(formel)
-            print(resultat)
-    
+def weight(mol):
+    tot_weight = 0
 
-        
+    if not mol:
+        return 0
+
+    # Check for parenthetical groups and handle accordingly
+    if mol.atom == '()':
+        tot_weight += weight(mol.down) * mol.num
+    else:
+        tot_weight += atom_dict.get(mol.atom, 0) * mol.num
+
+    # Recursive call for the next group
+    if mol.next:
+        tot_weight += weight(mol.next)
+
+    return tot_weight
+
+def main():
+    formel = input("Molekyl: ")
+    if formel != '#':
+        result = kollaFormelSyntax(formel)
+        mol_weight = weight(result)
+        print(f"The molecular weight of {formel} is: {mol_weight}")
+
+
+
 
 if __name__ == "__main__":
     main()
