@@ -47,10 +47,10 @@ class Molgrafik:
         ruta.pack(side=LEFT)
         atom=Frame(ruta,bg="yellow")
         atom.pack(side=LEFT)
-        Label(atom,text=namn,font=self.stor,bg="yellow").pack()
+        Label(atom,text=namn,font=self.stor,bg="yellow", fg="black").pack()
         Frame(atom, height=5, bg="yellow").pack()
         if num>1:
-            Label(ruta, text=str(num),font=self.liten,bg="yellow").pack(side=BOTTOM)
+            Label(ruta, text=str(num),font=self.liten,bg="yellow", fg="black").pack(side=BOTTOM)
 
     def streck(self,master):
         """ Ritar ett streck. Parametrar: master (grafikfonstret) """
@@ -91,4 +91,4 @@ class Molgrafik:
         self.root=Tk()
         Label(self.root,text="  ",font=self.stor,bg="white").pack(side=LEFT,fill=Y)
         self.picture(self.root,p)
-        #mainloop() #Kommentera bort om du anv. IDLE (IDLE har egen mainloop())
+        mainloop() #Kommentera bort om du anv. IDLE (IDLE har egen mainloop())
